@@ -1,16 +1,24 @@
-var http = require('http');
-var Accessory, Service, Characteristic, UUIDGen;
+var mosca = require('mosca')
+var mqtt = require('mqtt')
+var Service, Characteristic;
 
 module.exports = function (homebridge) {
   console.log("homebridge API version: " + homebridge.version);
 
+  var broker = mosca.Server()
+  broker.on('ready', () => {
+    console.log('Mosca server up and running!')
+  })
+  broker.on('clientConnected', (client) => {
+    console.log('client connected', client.id);
+  });
+
+  var mqttClient = mqtt.connect('mqtt://localhost')
+
   // Service and Characteristic are from hap-nodejs
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
-  UUIDGen = homebridge.hap.uuid;
 
-  // For platform plugin to be considered as dynamic platform plugin,
-  // registerPlatform(pluginName, platformName, constructor, dynamic), dynamic must be true
   homebridge.registerAccessory("homebridge-ac", "AC Unit", ACUnit);
 }
 
@@ -21,45 +29,55 @@ class ACUnit {
     this.name = config.name
 
     this.on = 0
-    this.hc = 0
-    this.temp = 24
+    this.thc = 2
+    this.chc = 0
+    this.targetTemp = 23.0
+    this.temp = 24.0
+    this.swing = 0
+    this.speed = 0
 
     this.service = new Service.HeaterCooler(this.name, 'Air conditioner')
     this.service.getCharacteristic(Characteristic.Active)
       .on('set', (value, callback) => {
         this.on = value
         if (this.on) {
-          console.log('AC activated')
+          console.log('attivo')
         } else {
-          console.log('AC turned off')
+          console.log('disattivato')
         }
         callback()
       })
       .on('get', (callback) => {
         callback(null, this.on)
       })
+    // .setProps({
+    //   validValues: [0, 3]
+    // })
 
     this.service.getCharacteristic(Characteristic.CurrentHeaterCoolerState)
       .on('set', (value, callback) => {
         console.log('Current hc state set to:', value)
-        this.hc = value
+        this.chc = value
         callback()
       })
       .on('get', (callback) => {
-        console.log('Current hc state is', this.hc)
-        callback(null, this.hc)
+        console.log('Current hc state is', this.chc)
+        callback(null, this.chc)
       })
 
     this.service.getCharacteristic(Characteristic.TargetHeaterCoolerState)
       .on('set', (value, callback) => {
         console.log('Target hc state set to:', value)
-        this.hc = value
+        this.thc = value
         callback()
       })
       .on('get', (callback) => {
-        console.log('Target hc state is', this.hc)
-        callback(null, this.hc)
+        console.log('Target hc state is', this.thc)
+        callback(null, this.thc)
       })
+    // .setProps({
+    //   validValues: [2]
+    // })
 
     this.service.getCharacteristic(Characteristic.CurrentTemperature)
       .on('set', (value, callback) => {
@@ -75,17 +93,20 @@ class ACUnit {
     this.service.addCharacteristic(Characteristic.CoolingThresholdTemperature)
       .on('set', (value, callback) => {
         console.log('cooling thasds is', value)
+        this.targetTemp = value
+        callback()
       })
       .on('get', (callback) => {
-        callback(null, 20)
+        callback(null, this.targetTemp)
       })
 
-    this.service.addCharacteristic(Characteristic.HeatingThresholdTemperature)
+    this.service.addCharacteristic(Characteristic.SwingMode)
       .on('set', (value, callback) => {
-        console.log('heating thasds is', value)
+        this.swing = value
+        callback()
       })
       .on('get', (callback) => {
-        callback(null, 20)
+        callback(null, this.swing)
       })
   }
 

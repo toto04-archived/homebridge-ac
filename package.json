@@ -13,5 +13,9 @@
     "homebridge": ">=0.2.0"
   },
   "author": "Tommaso Morganti",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "mosca": "^2.8.3",
+    "mqtt": "^3.0.0"
+  }
 }
